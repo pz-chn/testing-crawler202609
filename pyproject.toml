@@ -1,0 +1,27 @@
+[project]
+name = "test0910"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "pz-chn", email = "prz.chen@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "celery>=5.6.3",
+    "feedparser>=6.0.14",
+    "finmind>=2.0.9",
+    "flask==3.1.0",
+    "loguru>=0.7.3",
+    "pandas>=2.3.3",
+    "pymysql>=1.2.3",
+    "sqlalchemy>=2.0.54",
+]
+
+[project.scripts]
+test0910 = "test0910:main"
+
+[build-system]
+requires = ["uv_build>=0.12.12,<0.13.0"]
+build-backend = "uv_build"
