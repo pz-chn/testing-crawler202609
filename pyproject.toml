@@ -13,6 +13,7 @@ dependencies = [
     "loguru>=0.7.3",
     # pymysql 不會出現在任何 import, 是 sqlalchemy 連線字串 mysql+pymysql:// 在執行期載入的 driver
     "pymysql>=1.2.3",
+    "requests>=2.32.0",
     "sqlalchemy>=2.0.54",
 ]
 
