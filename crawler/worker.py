@@ -20,7 +20,7 @@ logger.info(f"""
     RABBITMQ_HOST: {RABBITMQ_HOST}
     RABBITMQ_PORT: {RABBITMQ_PORT}
     WORKER_ACCOUNT: {WORKER_ACCOUNT}
-    WORKER_PASSWORD: {WORKER_PASSWORD}
+    WORKER_PASSWORD: ***
 """)
 
 # 建立 Celery app 實例, "task" 是這個應用程式的名稱
