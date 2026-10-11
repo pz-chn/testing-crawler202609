@@ -9,6 +9,7 @@ requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "celery>=5.6.3",
+    "cryptography>=50.0.2",
     "feedparser>=6.0.14",
     "loguru>=0.7.3",
     # pymysql 不會出現在任何 import, 是 sqlalchemy 連線字串 mysql+pymysql:// 在執行期載入的 driver
