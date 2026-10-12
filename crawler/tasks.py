@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from sqlalchemy import create_engine, text
 from loguru import logger
 
+from crawler.db_retry import MAX_DB_RETRIES, is_retryable_db_error, retry_countdown
 from crawler.config import (
     MYSQL_HOST,
     MYSQL_PORT,
@@ -83,8 +84,8 @@ def get_engine():
 
 # @app.task() 是 Celery 的裝飾器 (decorator)
 # 有了這個裝飾器, 普通的 Python 函式就會變成「可派送的任務」
-@app.task()
-def fetch_page(page):
+@app.task(bind=True)
+def fetch_page(self, page):
     # 對應 test_mygopen_crawler-0912.py 裡「抓一頁」的邏輯
     start_index = page * MAX_RESULTS + 1
     url = f"{BASE_URL}?start-index={start_index}&max-results={MAX_RESULTS}"
@@ -109,25 +110,40 @@ def fetch_page(page):
         return 0
 
     engine = get_engine()
-    # 整頁包在同一個交易裡, 中途失敗不會留下只有文章沒有分類的半套資料
-    with engine.begin() as conn:
-        for article in articles:
-            categories = article.pop("categories")
-            conn.execute(UPSERT_ARTICLE_SQL, article)
+    try:
+        # 整頁包在同一個交易裡, 中途失敗不會留下只有文章沒有分類的半套資料
+        with engine.begin() as conn:
+            for article in articles:
+                categories = article.pop("categories")
+                conn.execute(UPSERT_ARTICLE_SQL, article)
 
-            article_id = conn.execute(
-                SELECT_ARTICLE_ID_SQL, {"url": article["url"]}
-            ).scalar()
+                article_id = conn.execute(
+                    SELECT_ARTICLE_ID_SQL, {"url": article["url"]}
+                ).scalar()
 
-            conn.execute(DELETE_CATEGORIES_SQL, {"article_id": article_id})
-            if categories:
-                conn.execute(
-                    INSERT_CATEGORY_SQL,
-                    [
-                        {"article_id": article_id, "category": category}
-                        for category in categories
-                    ],
-                )
+                conn.execute(DELETE_CATEGORIES_SQL, {"article_id": article_id})
+                if categories:
+                    conn.execute(
+                        INSERT_CATEGORY_SQL,
+                        [
+                            {"article_id": article_id, "category": category}
+                            for category in categories
+                        ],
+                    )
+    except Exception as exc:
+        if not is_retryable_db_error(exc):
+            raise
+        # 交易已整個 rollback, 重跑整頁即可; 次數用盡時 self.retry 會直接拋出原錯誤
+        if self.request.retries < MAX_DB_RETRIES:
+            logger.warning(
+                f"{self.name} page {page}: 第 {self.request.retries + 1} 次重試, "
+                f"MySQL 錯誤碼 {exc.orig.args[0]}"
+            )
+        raise self.retry(
+            exc=exc,
+            countdown=retry_countdown(self.request.retries),
+            max_retries=MAX_DB_RETRIES,
+        )
 
     logger.info(f"page {page}: 寫入 {len(articles)} 筆資料")
     return len(articles)
