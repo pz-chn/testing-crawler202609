@@ -10,5 +10,12 @@ from crawler.tasks import fetch_page
 # worker 會依序 (或同時, 如果之後開多個 worker) 把它們拿去執行
 TOTAL_PAGES = 5
 
-for page in range(TOTAL_PAGES):
-    fetch_page.delay(page)
+
+# 抽成函式, 讓 tasks_schedule.py 的定時任務也能共用同一段派工邏輯
+def dispatch_pages():
+    for page in range(TOTAL_PAGES):
+        fetch_page.delay(page)
+
+
+if __name__ == "__main__":
+    dispatch_pages()
